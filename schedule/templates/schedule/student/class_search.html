@@ -1,0 +1,200 @@
+{% load bootstrap5 %} 
+{% bootstrap_css %} 
+{% bootstrap_javascript %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    {% load static %}
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="{% static 'schedule/style.css' %}">
+  </head>
+  <body>
+    <!-- 
+      Title: Bootstrap NavBar
+      Date: 2/23/2023
+      URL: https://getbootstrap.com/docs/4.0/components/navbar/
+     -->
+    <nav class="navbar navbar-expand-lg navbar-light ps-3 pe-3" style="background-color: #e3f2fd;">
+      <a class="navbar-brand" href="/"><h1>Schedule Advisor</h1></a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse flex-row-reverse" id="navbarNavAltMarkup">
+        <div class="flex-row-reverse justify-content-between">
+          <a class="btn btn-outline-primary" href="/">Home</a>
+          <a class="btn btn-outline-primary active" href="{% url 'class_search' %}">Class Search <span class="sr-only"></span> </a>
+          <a class="btn btn-outline-primary" href="{% url 'build_schedule' %}">Build Schedule</a>
+          <a class="btn btn-outline-primary" href="{% url 'shopping_cart' %}">Shopping Cart</a>
+          <a class="btn btn-outline-primary" href="{% url 'logout' %}">Logout</a>
+        </div>
+      </div>
+    </nav>
+
+    {% for message in messages %}
+      <div class="alert {{ message.tags }} alert-dismissible fade show" role="alert" style="z-index:10; position:absolute; width:100%">
+        <button type="button" class="close" data-bs-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+        {{ message | safe }}
+      </div>
+    {% endfor %}
+    
+    <div class="m-3">
+      <form action="{% url 'do_search' %}" method="post">
+        {% csrf_token %}
+        <div class="row" style="padding-bottom: 1vh;"> 
+          <div class="col-3" style="padding-left:25px">
+            <label for="year">Year</label>
+            <select name="year" id="year" class="form-select">
+              <option id="year" value="null"> Select a Year </option>
+              <option id="year" value="2023"> 2023 </option>
+              <option id="year" value="2022"> 2022 </option>
+              <option id="year" value="2021"> 2021 </option>
+              <option id="year" value="2020"> 2020 </option>
+            </select>
+          </div>
+          <div class="col-3">
+            <label for="term">Term</label>
+            <select name="term" id="term" class="form-select">
+              <option id="term" value="null"> Select a Term </option>
+              <option id="term" value="spring"> Spring </option>
+              <option id="term" value="summer"> Summer </option>
+              <option id="term" value="fall"> Fall </option>
+            </select>
+          </div>              
+        </div>
+
+        <div class="row" id="filter_row">
+          <div class="col-3" style="padding-left:25px" id="subject_wrap">
+            <label for="subject_select">Subject Abbreviations </label>
+            <select name="subject" id="subject_select" class="form-select">
+              <!-- <option name="subject" id="subject" value="null"> Select an Option </option> -->
+              <option></option>
+            </select>
+          </div>
+
+          <!-- setting custom invalid messages found here:
+            https://stackoverflow.com/questions/10361460/how-can-i-change-or-remove-html-form-validation-default-error-messages -->
+          <div class="col-3">
+            <label for="catalog_num">Class Number</label>
+            <input type="text" class="form-control" name="catalog_num" 
+            id="catalog_num" value="{{ catalog_num.text }}"
+            pattern="^[0-9]{4}" oninvalid="setCustomValidity('Please enter a 4-digit Number')"
+            onchange="try{setCustomValidity('')}catch(e){}"
+            placeholder="Ex: 1110 for CS 1110"
+            />
+          </div>
+            
+          <div class="col-3">
+            <label for="name"> Class Name/Keywords</label>
+            <input type="text" class="form-control" 
+            name="name" id="name" value="{{ name.text }}"
+            pattern="([\w\d\-]+(\s{0,1}))*"
+            oninvalid="setCustomValidity('Make sure that there are no special characters other than &quot;-&quot, and that there are no double spaces in your search')"
+            onchange="try{setCustomValidity('')}catch(e){}"
+            placeholder="Ex: computer science"
+            />
+          </div>
+          <div class="col-1 d-flex justify-content-center align-items-end">
+            <input class="align-text-bottom btn btn-primary" id="submit_btn" type="submit" value="Search">
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class = "loading-screen">
+      <div class="loader"></div>
+    </div>
+    <footer class="bg-light text-center fixed-bottom pt-1">
+      <div class="container">
+          <p class="mb-0">CS 3240: Advanced Software Development</p>
+          <p class="text-muted">Group B-09</p>
+      </div>
+    </footer>
+  </body>
+  <script>
+    $(document).ready(function(){
+      // on page load, hide filter row 
+      $("#filter_row").hide();
+
+      // add onchange events to year and term
+      $("#year").change(onChangeYearTerm);
+      $("#term").change(onChangeYearTerm);
+
+      // hide or show filter row depending on whether year and term were selected
+      function onChangeYearTerm(){
+        if($("#year").val() != "null" && $("#term").val() != "null"){
+          $("#filter_row").show();
+          setSubjectList();
+        }
+        else{
+          $("#filter_row").hide();
+        }
+      }
+
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i].trim();
+              // Does this cookie string begin with the name we want?
+              if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                  cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                  break;
+              }
+          }
+      }
+    return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    function setSubjectList(){
+        $(".loading-screen").css("display", "block");
+        $("#subject_select").attr('disabled', true);
+        $("#submit_btn").attr('disabled', true);
+
+        year = $("#year").val();
+        term = $("#term").val();
+        obj = JSON.stringify({
+            'year': year,
+            'term': term
+          });
+
+        fetch('{% url "update_subject_list" %}', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'X-CSRFToken': csrftoken,
+          },
+          body: obj,
+        })
+        .then(response => response.json())
+        .then(data => {
+          $("#subject_select option:not(:first)").remove().end();
+          return data
+        })
+        .then(data => {
+          $.each(data.list, function (i, item) {
+            $('#subject_select').append($('<option>', { 
+                value: item,
+                text : item
+              }
+              ));
+          });
+          $("#subject_select").attr('disabled', false);
+          $("#submit_btn").attr('disabled', false);
+          $(".loading-screen").css("display", "none");
+          $("#subject_select").select2({
+            placeholder: "Select an Option",
+            allowClear: true,
+            theme: 'bootstrap-5',
+          });
+        })
+      }
+    });
+  </script>
+</html>

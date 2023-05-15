@@ -1,0 +1,217 @@
+{% load socialaccount %} 
+{% load bootstrap5 %} 
+{% bootstrap_css %} 
+{% bootstrap_javascript %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'schedule/style.css' %}">
+  </head>
+  <body>
+    <!-- 
+      Title: Bootstrap NavBar
+      Date: 2/23/2023
+      URL: https://getbootstrap.com/docs/4.0/components/navbar/
+     -->
+     <nav class="navbar navbar-expand-lg navbar-light ps-3 pe-3" style="background-color: #e3f2fd;">
+      <a class="navbar-brand" href="/"><h1>Schedule Advisor</h1></a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse flex-row-reverse" id="navbarNavAltMarkup">
+        <div class="flex-row-reverse justify-content-between">
+          <a class="btn btn-outline-primary" href="/">Home </span></a>
+          <a class="btn btn-outline-primary active" href="{% url 'advisors_requests' %}">Schedule Requests <span class="sr-only"></span></a>
+          <a class="btn btn-outline-primary" href="{% url 'logout' %}">Logout</a>
+        </div>
+      </div>
+    </nav>
+    <div style="display: flex; height:85%; width:100%;">
+      <div class = "side-panel bg-secondary" style="width:15%; height: 100%; ">
+        <button class="btn btn-dark text-light" style="width:100%" type="button" data-bs-toggle="collapse" data-bs-target="#pendingRequests" aria-expanded="true" aria-controls="pendingRequests">
+          Pending Requests
+        </button>
+        <div class="collapse p-3 show" id="pendingRequests">
+          {% if pending%}
+            {% for request in pending %}
+              {% if request.status == 0 %}
+              <div id = "menu-{{request.schedule.pk}}" class = "text-light ps-2 pt-3 pb-1 side-panel-requests" onclick = "switchRequest('{{request.schedule.pk}}'); updateRequestStatus(1)">
+              {% else %}
+              <div id = "menu-{{request.schedule.pk}}" class = "text-light ps-2 pt-3 pb-1 side-panel-requests" onclick = "switchRequest('{{request.schedule.pk}}')">
+              {% endif %}
+                <p>{{request.student.first_name}} {{request.student.last_name}}</p>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class = "text-light ps-2 pt-3 pb-1">
+              <p>No pending requests</p>
+            </div>
+          {% endif %}
+        </div>
+        <button class="btn btn-dark text-light" style="width:100%" type="button" data-bs-toggle="collapse" data-bs-target="#completedRequests" aria-expanded="true" aria-controls="completedRequests">
+          Completed Requests
+        </button>
+        <div class="collapse p-3 show" id="completedRequests">
+          {% if completed %}
+            {% for request in completed %}
+              <div id = "menu-{{request.schedule.pk}}" class = "text-light ps-2 pt-3 pb-1 side-panel-requests" onclick = "switchRequest('{{request.schedule.pk}}')">
+                <p>{{request.student.first_name}} {{request.student.last_name}}</p>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class = "text-light ps-2 pt-3 pb-1">
+              <p>No completed requests</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+      <div class = "main-panel p-3" style="width:85%">
+        {% if pending %}
+          {% for request in pending %}
+            <div id = "schedule-{{request.schedule.pk}}" style="display:none;">
+              <div style = "display: flex; justify-content: space-between;">
+                <h3>{{request.student.first_name}} {{request.student.last_name}}</h3>
+              </div>
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Course</th>
+                    <th>Instructor</th>
+                    <th>Units</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for course in request.schedule.courses.all %}
+                    <TR>
+                      <TD>{{course.subject}} {{course.catalog_num}}: {{course.title}} ({{course.component}})</TD>
+                      <TD>{{ course.instructor }}</TD> 
+                      <TD>{{ course.units }} </TD>
+                    </TR>
+                  {% endfor %}
+                </tbody>
+              </table>
+              {% if request.status == 0 or request.status == 1%}
+                  <div>
+                    <form id = "update_status_form" action="{% url 'update_request_status' %}" method="post">
+                      {% csrf_token %}
+                      <label for="request_comment">Comments</label><br/>
+                      <textarea name="request_comment" id="request_comment" form="update_status_form"></textarea>
+                      <input type="hidden" name="request_pk" id = "request_pk" value="{{ request.pk }}">
+                      <input type="hidden" name="status" id = "request_status">
+                    </form>
+                    <button class = "btn btn-outline-primary" onclick="updateRequestStatus(2)">Approve</button>
+                    <button class = "btn btn-outline-primary" onclick="updateRequestStatus(3)">Reject</button>
+                  </div>
+              {% else %}
+                {% if request.status == 2 %}
+                  <div>
+                    <button class = "btn btn-primary" disabled>Approved</button>
+                  </div>
+                {% else %}
+                  <div>
+                    <button class = "btn btn-primary" disabled>Rejected</button>
+                  </div>
+                {% endif %}
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% endif %}
+        {% if completed %}
+          {% for request in completed %}
+            <div id = "schedule-{{request.schedule.pk}}" style="display:none;">
+              <div style = "display: flex; justify-content: space-between;">
+                <h3>{{request.student.first_name}} {{request.student.last_name}}</h3>
+              </div>
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Course</th>
+                    <th>Instructor</th>
+                    <th>Units</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for course in request.schedule.courses.all %}
+                    <TR>
+                      <TD>{{course.subject}} {{course.catalog_num}}: {{course.title}} ({{course.component}})</TD>
+                      <TD>{{ course.instructor }}</TD> 
+                      <TD>{{ course.units }} </TD>
+                    </TR>
+                  {% endfor %}
+                </tbody>
+              </table>
+              {% if request.status == 0 or request.status == 1 %}
+                  <div>
+                    <form id = "update_status_form" action="{% url 'update_request_status' %}" method="post">
+                      {% csrf_token %}
+                      <label for="request_comment">Comments</label><br/>
+                      <textarea name="request_comment" id="request_comment" form="update_status_form"></textarea>
+                      <input type="hidden" name="request_pk" id = "request_pk" value="{{ request.pk }}">
+                      <input type="hidden" name="status" id = "request_status">
+                    </form>
+                    <button class = "btn btn-outline-primary" onclick="updateRequestStatus(2)">Approve</button>
+                    <button class = "btn btn-outline-primary" onclick="updateRequestStatus(3)">Reject</button>
+                  </div>
+              {% else %}
+                {% if request.status == 2 %}
+                  <div>
+                    <button class = "btn btn-primary" disabled>Approved</button>
+                  </div>
+                {% else %}
+                  <div>
+                    <button class = "btn btn-primary" disabled>Rejected</button>
+                  </div>
+                {% endif %}
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </body>
+  <script>
+    window.addEventListener("load", () =>{
+      var schedules = $(".main-panel").eq(0).children();
+      schedules.eq(0).addClass("selected");
+      schedules.eq(0).css("display", "block");
+    });
+
+    function switchRequest(request_id){
+      var schedules = $(".main-panel").children();
+
+      for(var i = 0; i < schedules.length; i++){
+        if(schedules.eq(i).hasClass("selected")){
+          schedules.eq(i).removeClass("selected");
+          schedules.eq(i).css("display", "none");
+          var id = schedules.eq(i).attr('id').split('-')[1];
+          $('#menu-'+id).removeClass("bg-light");
+          $('#menu-'+id).removeClass("text-dark");
+        }
+        if(schedules.eq(i).attr("id") == 'schedule-'+ request_id){
+          schedules.eq(i).addClass("selected");
+          schedules.eq(i).css("display", "block");
+          }
+      }
+
+      $('#menu-'+request_id).addClass("bg-light");
+      $('#menu-'+request_id).addClass("text-dark");
+
+    }
+
+    function updateRequestStatus(status){
+      var form = document.getElementById("update_status_form");
+      var status_field = document.getElementById("request_status");
+      status_field.value = status;
+      form.submit();
+    }
+  </script>
+<footer class="bg-light text-center fixed-bottom">
+    <div class="container">
+        <p class="mb-0">CS 3240: Advanced Software Development</p>
+        <p class="text-muted">Group B-09</p>
+    </div>
+</footer>
+</html>

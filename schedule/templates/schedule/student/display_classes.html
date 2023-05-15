@@ -1,0 +1,128 @@
+{% load bootstrap5 %} 
+{% bootstrap_css %} 
+{% bootstrap_javascript %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'schedule/style.css' %}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
+  </head>
+  <body>
+    <!-- 
+      Title: Bootstrap NavBar
+      Date: 2/23/2023
+      URL: https://getbootstrap.com/docs/4.0/components/navbar/
+     -->
+    <nav class="navbar navbar-expand-lg navbar-light ps-3 pe-3" style="background-color: #e3f2fd;">
+      <a class="navbar-brand" href="/"><h1>Schedule Advisor</h1></a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse flex-row-reverse" id="navbarNavAltMarkup">
+        <div class="flex-row-reverse justify-content-between">
+          <a class="btn btn-outline-primary" href="/">Home</a>
+          <a class="btn btn-outline-primary" href="{% url 'class_search' %}">Class Search</a>
+          <a class="btn btn-outline-primary" href="{% url 'build_schedule' %}">Build Schedule</a>
+          <a class="btn btn-outline-primary" href="{% url 'shopping_cart' %}">Shopping Cart</a>
+          <a class="btn btn-outline-primary" href="{% url 'logout' %}">Logout</a>
+        </div>
+      </div>
+    </nav>
+    {% for message in messages %}
+    <div class="alert {{ message.tags }} alert-dismissible fade show" role="alert" style="z-index:10; position:absolute; width:100%">
+      <button type="button" class="close" data-bs-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+      {{ message | safe }}
+    </div>
+  {% endfor %}
+    <div>
+        {% if classes %}
+        <table id="courses-{{classes.0.strm}}" class="table table-striped" style="width:100%">
+          <thead>
+            <tr>
+              <th>Course ID</th>
+              <th>Catalog Number</th>
+              <th>Title</th>
+              <th>Instructor</th>
+              <th>Meeting Days/Time</th>
+              <th>Add to Schedule</th>
+              {% if current_strm in classes.0.strm %}
+              <th>Add to Cart</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in classes %}
+              <TR>
+                <TD>{{ c.class_nbr }}</TD>
+                <TD>{{ c.subject }} {{ c.catalog_num }} - {{ c.section }} ({{ c.component }})</TD> 
+                <TD>{{ c.title }} </TD>
+                <TD>{{ c.instructor }}</TD> 
+                <TD>{{ c.meet_days }} {{ c.start_time }} - {{ c.end_time }}
+                <TD><form action="{% url 'add_class_to_schedule' %}" method="post">
+                  {% csrf_token %}
+                  <table>
+                    <tr>
+                      <td>
+                        <select class = "schedule-select" onchange = "this.parentNode.parentNode.children[1].children[0].value = this.value">
+                        </select>
+                      </td>
+                      <td>
+                        <input type="hidden" name="schedule_pk" class = "schedule-input" value="new">
+                        <input type="hidden" name="course_pk" id = "schedule_course_pk" value="{{ c.pk }}">
+                        <input class="align-text-bottom btn btn-primary add-class-button" type="submit" value="Add">
+                      </td>
+                    </tr>
+                  </table>
+                </form></TD>
+                {% if current_strm in c.strm%}
+                <TD><form action="{% url 'add_to_cart' %}" method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="course_pk" id = "cart_course_pk" value="{{ c.pk }}">
+                  <input class="align-text-bottom btn btn-primary add-class-cart-button" type="submit" value="Add to Cart">
+                </form></TD>
+                {% endif %}
+                
+              </TR>
+              {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+    </div>
+    <script>
+      window.addEventListener("load", ()=>{
+        var term = document.getElementsByTagName("table")[0].id.split('-')[1].substring(1);
+        fetch("{% url 'get_schedules' %}?term=" + term)
+        .then((response) => response.json())
+        .then((data) => {
+          var selects = document.getElementsByClassName("schedule-select");
+          var schedules = data["schedules"];
+          var inputs = document.getElementsByClassName('schedule-input');
+          for(var i = 0; i < selects.length; i++){
+            var newOption = document.createElement("option"); // option to create new schedule
+            newOption.value = "new";
+            newOption.text = "Create New Schedule"
+            selects[i].appendChild(newOption);
+            if(schedules == 'create_new'){ //if there are no existing schedules, hide the selects and show only add to new schedule button
+              selects[i].value = "new";
+              selects[i].style.display = "none";
+              document.getElementsByClassName("add-class-button")[i].value = "Add to New Schedule"
+            } else{
+              for(var j = 0; j < schedules.length; j++){ // if there are existing schedules, append options to the selects
+                var option = document.createElement("option");
+                option.value = schedules[j];
+                option.text = "Schedule #" + schedules[j];
+                selects[i].append(option);
+                selects[i].value = schedules[0];
+                inputs[i].value = schedules[0];
+              }
+            }
+          }
+        })
+      })
+    </script>
+  </body>
+</html>

@@ -1,0 +1,175 @@
+{% load bootstrap5 %} 
+{% bootstrap_css %} 
+{% bootstrap_javascript %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
+    {% load static %}
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="{% static 'schedule/style.css' %}">
+  </head>
+  <body> 
+    <!-- 
+      Title: Bootstrap NavBar
+      Date: 2/23/2023
+      URL: https://getbootstrap.com/docs/4.0/components/navbar/
+     -->
+    <nav class="navbar navbar-expand-lg navbar-light ps-3 pe-3" style="background-color: #e3f2fd;">
+      <a class="navbar-brand" href="/"><h1>Schedule Advisor</h1></a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse flex-row-reverse" id="navbarNavAltMarkup">
+        <div class="flex-row-reverse justify-content-between">
+          <a class="btn btn-outline-primary" href="/">Home</a>
+          <a class="btn btn-outline-primary" href="{% url 'class_search' %}">Class Search</a>
+          <a class="btn btn-outline-primary" href="{% url 'build_schedule' %}">Build Schedule</a>
+          <a class="btn btn-outline-primary active" href="{% url 'shopping_cart' %}">Shopping Cart <span class="sr-only"></span> </a>
+          <a class="btn btn-outline-primary" href="{% url 'logout' %}">Logout</a>
+        </div>
+      </div>
+    </nav>
+    {% for message in messages %}
+    <div class="alert {{ message.tags }} alert-dismissible fade show" role="alert" style="z-index:10; position:absolute; width:100%">
+      <button type="button" class="close" data-bs-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+      {{ message | safe }}
+    </div>
+  {% endfor %}
+
+    <div class = "m-3" style="margin-left:2% !important;margin-right:2% !important;">
+      {% if courses %}
+      <table id="courses-{{courses.0.1.0.strm}}" class="table table-striped accordian" style="width:100%">
+        <thead>
+          <tr>
+            <th>Course</th>
+            <th>Add Class to Schedule</th>
+            <th>Remove Class</th>
+            <th class = "text-center">Credits</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for term in courses %}
+          <tr class="accordion-item" style="border-bottom-color: black;border-bottom-width: 2px;" data-bs-toggle="collapse" data-bs-target="#term-{{forloop.counter}}" aria-expanded="true" aria-controls="term-{{forloop.counter}}">
+            <td class = "col-5"><b>{{term.0}}</b></td>
+            <td class = "col-2"></td>
+            <td class = "col-1"></td>
+            <td class = "col-1 text-center"><b>{{term.2}}</b></td>
+          </tr>
+        </tbody>
+        <tbody id="term-{{forloop.counter}}" class="accordion-collapse collapse show">
+          {% for c in term.1 %}
+            <tr class="terms" id="{{ c.strm }}">
+              <td>{{c.subject}} {{c.catalog_num}} : {{c.title}} ({{c.component}})</td>
+              <td><form action="{% url 'add_class_to_schedule' %}" method="post">
+                {% csrf_token %}
+                <table>
+                  <tr>
+                    <td>
+                      <select name="{{c.strm}}" class = "form-select schedule-select" onchange = "this.parentNode.parentNode.children[1].children[0].value = this.value">
+                      </select>
+                    </td>
+                    <td>
+                      <input type="hidden" name="schedule_pk" class = "schedule-input" value="new">
+                      <input type="hidden" name="course_pk" id = "course_pk" value="{{ c.pk }}">
+                    <input class="align-text-bottom btn btn-primary add-class-button" type="submit" value="Add">
+                    </td>
+                  </tr>
+                </table>
+              </form></td> 
+              <td><form action="{% url 'delete_class_from_cart' %}" method="post">
+                {% csrf_token %}
+                  <input type="hidden" name="course_pk" value="{{ c.pk }}">
+                  <input class="align-text-bottom btn btn-primary remove-class-button" type="submit" value="Remove class">
+              </form></td>
+              <td class = 'text-center'>{{ c.units }}</td> 
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% endfor %}
+      </table>
+      {% else %}
+      <div class = "text-center align-middle" style = "width:100%; margin-top:10%">
+        <h1>There are no courses in the shopping cart.</h1>
+        <h3>Click on Class Search to start searching for classes!</h3>
+      </div>
+      {% endif %}
+    </div>
+    </body>
+
+    <script>
+      window.addEventListener("load", ()=>{
+        // var term = document.getElementsByTagName("table")[0].id.split('-')[1].substring(1);
+        var terms = document.getElementsByClassName("terms")
+        var promises = []
+        var semesters = []
+        var set_promise = false
+        for(var value = 0; value < terms.length; value++){
+          courseTerm = terms[value].id.substring(1);
+          if(semesters.length == 0){          
+            semesters.push(courseTerm)
+            promise = fetch("{% url 'get_schedules' %}?term=" + courseTerm)
+            promises.push(promise) 
+          }
+          else {
+            for(item in semesters){
+              if(semesters[item] == courseTerm){
+                set_promise = false
+              }
+              else{
+                set_promise = true
+              }
+            }
+            if(set_promise){
+              semesters.push(courseTerm)
+              promise = fetch("{% url 'get_schedules' %}?term=" + courseTerm)
+              promises.push(promise)
+            }
+          }
+        }
+
+        Promise.all(promises)
+        .then((responses) => Promise.all(responses.map((r) => r.json())))
+        .then((data) => {
+          var itemID = 0;
+          for (var i = 0; i < data.length; i++){
+            // console.log(data.length)
+            courseTerm = semesters[i]
+            var selects = document.getElementsByName("1" + courseTerm)
+            var schedules = data[i].schedules;
+            var inputs = document.getElementsByClassName('schedule-input');
+            for(var j = 0; j < selects.length; j++){
+              var newOption = document.createElement("option"); // option to create new schedule
+              newOption.value = "new";
+              newOption.text = "Create New Schedule";
+              selects[j].appendChild(newOption);
+              // console.log(selects[j])
+              if(schedules == "create_new"){ //if there are no existing schedules, hide the selects and show only add to new schedule button
+                selects[j].value = "new";
+                selects[j].style.display = "none";
+                document.getElementsByClassName("add-class-button")[itemID].value = "Add to New Schedule"
+              } 
+              else{
+                for(var k = 0; k < schedules.length; k++){ // if there are existing schedules, append options to the selects
+                  var option = document.createElement("option");
+                  option.value = schedules[k];
+                  option.text = "Schedule #" + schedules[k];
+                  selects[j].append(option);
+                  selects[j].value = schedules[0];
+                  inputs[j].value = schedules[0];
+                }
+              }
+              itemID++;
+          }
+        }})
+      })
+    </script>
+  <footer class="bg-light text-center fixed-bottom pt-1">
+      <div class="container">
+          <p class="mb-0">CS 3240: Advanced Software Development</p>
+          <p class="text-muted">Group B-09</p>
+      </div>
+  </footer>
+</html>

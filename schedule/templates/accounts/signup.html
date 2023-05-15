@@ -1,0 +1,45 @@
+{% load bootstrap5 %} 
+{% bootstrap_css %} 
+{% bootstrap_javascript %}
+<nav class="navbar navbar-expand-lg navbar-light ps-3 pe-3" style="background-color: #e3f2fd;">
+  <a class="navbar-brand" href="/"><h1>Schedule Advisor</h1></a>
+</nav>
+<div style = "height:91%; width:100%; background: linear-gradient(to bottom, rgb(255 255 255), rgb(48 84 110)); padding: 150px;">
+  <div style = "display:flex; height:100%; width:100%; border-radius: 50px; overflow:hidden;">
+    <div class="text-light" style="padding:20px;width:50%;height:100%;background-color: #2373ac;position: relative;">
+      <div style="position: absolute;top: 30%;margin: 20px;">
+        <h1>Sign Up</h1>
+        <p>
+          You are about to use your Google account to sign up for
+          Schedule Advisor. As a final step, please complete the following form.
+        </p>
+      </div>
+      
+    </div>
+    <div style="position:relative; padding:20px; width:50%; height:100%; background-color: white;">
+      <form class="signup" id="signup_form" method="post" action="{% url 'socialaccount_signup' %}" style="position: absolute;top: 25%;left: 20%;">
+        {% csrf_token %} 
+        {{ form.as_p }} 
+        {% if redirect_field_value %}
+        <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
+        {% endif %}
+        <button type="submit">Sign up</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.addEventListener("load", function(){
+    document.getElementById("id_user_type").onchange= function(){
+      if(document.getElementById("id_user_type").value == "student"){
+        document.getElementById("id_advisor_select").parentElement.style.display = "block";
+      }
+      else{
+        document.getElementById("id_advisor_select").parentElement.style.display = "none";
+        document.getElementById("id_advisor_select").value = "";
+      }
+        
+    };
+  });
+</script>
